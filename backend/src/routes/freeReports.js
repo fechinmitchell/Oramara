@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { wrap, badRequest } from './wrap.js';
 import { getSettings, saveSettings, today, kick } from '../services/freeReport.js';
+import { fixLink } from '../siteUrl.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.get(
       )
     ]);
     const waiting = list.rows.filter((r) => ['pending', 'queued', 'running'].includes(r.status)).length;
-    res.json({ settings, today: { ...now, waiting }, requests: list.rows });
+    res.json({ settings, today: { ...now, waiting }, requests: list.rows.map((r) => ({ ...r, link_url: fixLink(r.link_url) })) });
   })
 );
 

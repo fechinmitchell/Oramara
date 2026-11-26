@@ -6,12 +6,13 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { wrap, badRequest } from './wrap.js';
 import { newInviteToken, accessState } from '../portalAuth.js';
+import { siteUrl, fixLink } from '../siteUrl.js';
 
 const router = Router();
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_DAYS = 14;
 const RESET_DAYS = 7;
-const portalUrl = (req) => (process.env.PORTAL_URL || req.headers.origin || 'http://localhost:5173').replace(/\/$/, '');
+const portalUrl = (req) => siteUrl(req.headers?.origin);
 const linkUrl = (req, token) => `${portalUrl(req)}/r/${token}`;
 
 // Activity per club, worked out from the events log
