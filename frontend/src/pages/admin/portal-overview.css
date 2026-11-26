@@ -1,0 +1,34 @@
+/* oramara/frontend/src/pages/admin/portal-overview.css */
+/* Customer portal page in the admin: headline numbers, filter tabs and the clubs table */
+
+/* Headline numbers, styled like the stat cards on Leads and API usage */
+.act-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.7rem; margin-bottom: 1rem; }
+.act-kpis > div { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.act-kpis strong { font: 600 1.6rem var(--sans); letter-spacing: -0.02em; color: var(--ink); }
+.act-kpis span { font-size: 0.8rem; color: var(--muted); }
+
+/* Filter tabs above the table */
+.po-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+.po-filters button {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; border-radius: 999px;
+  background: #fff; border: 1px solid var(--line); color: var(--ink); font: 500 0.85rem var(--sans); cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.po-filters button small { font-size: 0.72rem; font-weight: 600; color: var(--muted); background: var(--bg-alt); border-radius: 999px; padding: 0.05rem 0.45rem; }
+.po-filters button:hover { border-color: #b9c8c5; }
+.po-filters button.on { background: var(--sea); border-color: var(--sea); color: #fff; }
+.po-filters button.on small { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.po-filters button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Clubs table */
+.po-table th { white-space: nowrap; }
+.po-table td { vertical-align: middle; }
+.po-table .tr-chip { margin-left: 0; }
+.po-row { cursor: pointer; }
+.po-row:hover td { background: var(--bg-alt); }
+.po-row a { color: var(--sea); text-decoration: none; }
+.po-row a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .act-kpis { grid-template-columns: 1fr 1fr; }
+}

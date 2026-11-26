@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import './analysis.css';
 import './club.css';
+import './portal-overview.css';
 
 const STATUS_LABEL = { trial: 'Free trial', active: 'Paying', paused: 'Paused', ended: 'Ended' };
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
