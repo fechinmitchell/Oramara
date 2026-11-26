@@ -14,6 +14,7 @@ import Report from './pages/admin/Report.jsx';
 import Usage from './pages/admin/Usage.jsx';
 import ClubAccount from './pages/admin/ClubAccount.jsx';
 import PortalOverview from './pages/admin/PortalOverview.jsx';
+import Account from './pages/admin/Account.jsx';
 import PortalLogin from './pages/portal/PortalLogin.jsx';
 import PortalAccept from './pages/portal/PortalAccept.jsx';
 import PortalLayout from './pages/portal/PortalLayout.jsx';
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="usage" element={<Usage />} />
         <Route path="club/:leadId" element={<ClubAccount />} />
         <Route path="portal" element={<PortalOverview />} />
+        <Route path="account" element={<Account />} />
       </Route>
       <Route
         path="/admin/report/:id"
