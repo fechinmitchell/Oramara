@@ -1,13 +1,13 @@
 // oramara/frontend/src/pages/Pitches.jsx
-import { useState } from 'react';
 import Header from '../components/Header.jsx';
 import Footer from '../components/Footer.jsx';
 import Wave from '../components/Wave.jsx';
-import PitchMap from '../components/PitchMap.jsx';
+import BeforeAfter from '../components/BeforeAfter.jsx';
 import EnquiryForm from '../components/EnquiryForm.jsx';
 import { BRAND, PRICING, TECH } from '../config/brand.js';
 import { FORMATS, USES, doseFor } from '../config/products.js';
-import { HOW_IT_WORKS, PITCH_DEMOS, REPORT_CONTENTS } from '../config/pitchDemo.js';
+import { HOW_IT_WORKS, REPORT_CONTENTS } from '../config/pitchDemo.js';
+import { CLIFDEN_REPORT } from '../config/clifdenReport.js';
 import './pitches.css';
 
 const WHITE = '#ffffff';
@@ -18,9 +18,8 @@ const ATLANTIC = '#0b2f33';
 const pouch = FORMATS.find((f) => f.id === 'pouch');
 
 export default function Pitches() {
-  const [sportId, setSportId] = useState('gaa');
-  const demo = PITCH_DEMOS.find((d) => d.id === sportId);
-  const use = USES.find((u) => u.id === sportId);
+  const report = CLIFDEN_REPORT;
+  const use = USES.find((u) => u.id === 'gaa');
   const dose = doseFor({ areaHa: use.areaHa, format: pouch });
 
   return (
@@ -36,45 +35,50 @@ export default function Pitches() {
             Your first report is free.
           </p>
 
-          <div className="sport-tabs" role="tablist">
-            {PITCH_DEMOS.map((d) => (
-              <button
-                key={d.id}
-                role="tab"
-                aria-selected={d.id === sportId}
-                className={`sport-tab ${d.id === sportId ? 'active' : ''}`}
-                onClick={() => setSportId(d.id)}
-              >
-                {d.name}
-              </button>
-            ))}
-          </div>
+          <p className="real-tag">
+            Real report: {report.club}, {report.place}
+          </p>
 
           <div className="demo-grid">
-            <div className="demo-map">
-              <PitchMap sport={demo.id} zones={demo.zones} />
-              <p className="demo-note">Example report for a {demo.title}. Illustrative data.</p>
+            <div className="demo-map pitch-ba" style={{ '--ba-ratio': `${report.width} / ${report.height}` }}>
+              <BeforeAfter
+                before={report.photo}
+                after={report.healthMap}
+                beforeLabel="Satellite photo"
+                afterLabel="Health map"
+              />
+              <p className="demo-note">
+                Drag to compare. {report.pitch} at {report.club}, from an {report.photoSource} photo taken on{' '}
+                {report.photoDate} at about {report.resolutionCm} cm per pixel. North is on the left.
+              </p>
             </div>
 
             <aside className="card demo-panel">
               <p className="demo-label">Health score</p>
-              <p className="demo-score">{demo.score}<span>/ 100</span></p>
+              <p className="demo-score">{report.score}<span>/ 100</span></p>
               <div className="bar">
-                <span style={{ width: `${demo.healthy}%` }} />
-                <span style={{ width: `${demo.moderate}%` }} />
-                <span style={{ width: `${demo.stressed}%` }} />
+                <span style={{ width: `${report.healthy}%` }} />
+                <span style={{ width: `${report.moderate}%` }} />
+                <span style={{ width: `${report.stressed}%` }} />
               </div>
               <div className="legend">
-                <span><i style={{ background: 'var(--green)' }} />Healthy {demo.healthy}%</span>
-                <span><i style={{ background: '#d6aa32' }} />Moderate {demo.moderate}%</span>
-                <span><i style={{ background: 'var(--red)' }} />Stressed {demo.stressed}%</span>
+                <span><i style={{ background: 'var(--green)' }} />Healthy {report.healthy}%</span>
+                <span><i style={{ background: '#d6aa32' }} />Moderate {report.moderate}%</span>
+                <span><i style={{ background: 'var(--red)' }} />Stressed {report.stressed}%</span>
               </div>
+              <p className="muted small">
+                {report.areaM2.toLocaleString()} m² of playing surface measured. A strong pitch overall, with
+                two spots worth a look.
+              </p>
               <hr />
               <p className="demo-label">Recommended dose</p>
               <p className="demo-dose">
                 <strong>{dose.units}</strong> Dose Pouches per spray
               </p>
-              <p className="muted small">In about {dose.waterLitres.toLocaleString()} L of water, monthly March to October.</p>
+              <p className="muted small">
+                For the pitch and its surrounds, in about {dose.waterLitres.toLocaleString()} L of water, monthly
+                March to October.
+              </p>
             </aside>
           </div>
         </div>
@@ -84,13 +88,14 @@ export default function Pitches() {
       <section className="section">
         <div className="container">
           <p className="eyebrow">Fadhbanna<small>Problem zones</small></p>
-          <h2>What the report tells you</h2>
+          <h2>What the report found at {report.club}</h2>
           <div className="zone-list">
-            {demo.zones.map((z) => (
+            {report.zones.map((z) => (
               <div key={z.letter} className="card zone">
                 <span className="zone-letter">{z.letter}</span>
                 <div>
                   <h3>{z.label}</h3>
+                  <p className="zone-share">About {z.share}% of the turf in this part looks weaker than the rest of the pitch</p>
                   <p className="muted">{z.likely}</p>
                   <p className="zone-action"><strong>Action:</strong> {z.action}</p>
                 </div>
@@ -98,7 +103,10 @@ export default function Pitches() {
             ))}
           </div>
           <p className="fine-print">
-            Reports show where to look and what usually helps. They are a guide for your grounds team, not a diagnosis.
+            The score measures how green and even the turf looks in the satellite photo, so it shows the pitch as it
+            was on {report.photoDate}. The small mark in the middle of the pitch is a person or object in the photo,
+            not a problem with the turf. Reports show where to look and what usually helps. They are a guide for your
+            grounds team, not a diagnosis.
           </p>
         </div>
       </section>
@@ -144,7 +152,7 @@ export default function Pitches() {
             <div className="card option">
               <h3>{BRAND.product}</h3>
               <p className="option-price">{dose.units} pouches</p>
-              <p className="muted">Per application for a {demo.title}. Buy as you go or on a season subscription.</p>
+              <p className="muted">Per application for a GAA pitch. Buy as you go or on a season subscription.</p>
               <a href="/#formats" className="btn btn-ghost">See the formats</a>
             </div>
             <div className="card option">
@@ -166,7 +174,7 @@ export default function Pitches() {
           <p className="eyebrow">Teagmháil<small>Request</small></p>
           <h2>Request your free {TECH.name} report</h2>
           <p className="section-lead">Tell us where your pitch is. We will send your report and a simple plan within a week.</p>
-          <EnquiryForm key={sportId} defaultType={sportId} defaultInterest={`Free ${TECH.name} report`} />
+          <EnquiryForm defaultType="gaa" defaultInterest={`Free ${TECH.name} report`} />
         </div>
       </section>
       <Wave from={MIST} to={ATLANTIC} flip />
