@@ -61,13 +61,23 @@ router.get(
         )
       ).rows.map((r) => [r.lead_id, r])
     );
+    // The latest free report request from the website, so its progress shows before the report exists
+    const requests = new Map(
+      (
+        await query(
+          `SELECT DISTINCT ON (lead_id) lead_id, id, status, error, email, contact_name AS name, created_at
+           FROM free_reports WHERE lead_id IS NOT NULL ORDER BY lead_id, created_at DESC`
+        )
+      ).rows.map((r) => [r.lead_id, r])
+    );
     res.json(
       rows.map((r) => ({
         ...r,
         state: accessState(r),
         stats: stats.get(r.lead_id) || emptyStats,
         portalReports: byLead.get(r.lead_id) || [],
-        contact: contacts.get(r.lead_id) || null
+        contact: contacts.get(r.lead_id) || (requests.get(r.lead_id) ? { email: requests.get(r.lead_id).email, name: requests.get(r.lead_id).name } : null),
+        freeRequest: requests.get(r.lead_id) || null
       }))
     );
   })
@@ -105,6 +115,13 @@ router.get(
       )
     ).rows.map((k) => ({ ...k, url: linkUrl(req, k.token), token: undefined }));
     const stats = (await query(`${STATS_SQL} WHERE e.lead_id = $1 GROUP BY e.lead_id`, [leadId])).rows[0] || emptyStats;
+    const freeRequests = (
+      await query(
+        `SELECT id, status, error, email, contact_name, created_at, finished_at, analysis_id, link_url
+         FROM free_reports WHERE lead_id = $1 ORDER BY created_at DESC`,
+        [leadId]
+      )
+    ).rows;
     const sections = (
       await query(
         `SELECT detail->>'section' AS section, COUNT(*)::int AS n, MAX(created_at) AS last FROM portal_events
@@ -141,6 +158,7 @@ router.get(
       reports: reportList.length,
       reportList,
       links,
+      freeRequests,
       stats,
       sections,
       clicks,

@@ -10,6 +10,14 @@ import './club.css';
 import './portal-overview.css';
 
 const STATUS_LABEL = { trial: 'Free trial', active: 'Paying', paused: 'Paused', ended: 'Ended' };
+// Free report asked for on the website, while it is not ready yet
+const REQUEST_LABEL = {
+  pending: 'Website request: waiting',
+  running: 'Website request: being made',
+  queued: 'Website request: held by the daily cap',
+  needs_review: 'Website request: needs a look',
+  failed: 'Website request: failed'
+};
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 const ago = (d) => {
   if (!d) return '';
@@ -169,6 +177,9 @@ export default function PortalOverview() {
                       {r.contact?.email || r.county || ''}
                       {latest && ` · ${latest.label || 'Main pitch'} ${latest.score}`}
                     </div>
+                    {r.freeRequest && REQUEST_LABEL[r.freeRequest.status] && (
+                      <span className={`po-request po-request-${r.freeRequest.status}`}>{REQUEST_LABEL[r.freeRequest.status]}</span>
+                    )}
                   </td>
                   <td>
                     {latest ? (

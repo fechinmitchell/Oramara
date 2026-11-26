@@ -32,3 +32,7 @@
 @media (max-width: 600px) {
   .act-kpis { grid-template-columns: 1fr 1fr; }
 }
+
+/* Free report asked for on the website, not ready yet */
+.po-request { display: inline-block; margin-top: 0.25rem; padding: 0.1rem 0.5rem; border-radius: 6px; font-size: 0.72rem; font-weight: 600; background: #fbf1dc; color: #7a5a12; }
+.po-request-needs_review, .po-request-failed { background: #fbe5e3; color: #9a2c22; }

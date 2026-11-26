@@ -267,3 +267,8 @@ CREATE TABLE IF NOT EXISTS free_reports (
 );
 CREATE INDEX IF NOT EXISTS free_reports_club_idx ON free_reports (club_key);
 CREATE INDEX IF NOT EXISTS free_reports_status_idx ON free_reports (status, created_at);
+
+-- Clubs that asked for a free report show in the Customer portal even before their report is made
+INSERT INTO portal_access (lead_id, status)
+  SELECT DISTINCT lead_id, 'trial' FROM free_reports WHERE lead_id IS NOT NULL
+  ON CONFLICT (lead_id) DO NOTHING;

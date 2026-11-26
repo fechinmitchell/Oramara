@@ -11,6 +11,14 @@ import './analysis.css';
 import './club.css';
 
 const STATUS_LABEL = { trial: 'Free trial', active: 'Paying', paused: 'Paused', ended: 'Ended', none: 'No access' };
+const FREE_STATUS = {
+  pending: 'Waiting to be made',
+  running: 'Being made now',
+  ready: 'Report made and shared',
+  queued: 'Held by the daily cap',
+  needs_review: 'Needs a look: pitch not found',
+  failed: 'Failed'
+};
 const fmtWhen = (d) =>
   d ? new Date(d).toLocaleString('en-IE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
@@ -374,6 +382,34 @@ function Portal({ leadId, prefill, onChange }) {
           {(state.status === 'paused' || state.status === 'ended') && <button className="btn btn-ghost btn-small" disabled={!!busy} onClick={() => changeAccess({ status: 'trial', extendDays: 14 })}>Reopen for 14 days</button>}
           {state.status !== 'ended' && <button className="btn btn-ghost btn-small" disabled={!!busy} onClick={() => changeAccess({ status: 'ended' })}>End access</button>}
         </div>
+      )}
+
+      {info?.freeRequests?.length > 0 && (
+        <>
+          <h3 className="club-sub">Free report from the website</h3>
+          <ul className="portal-reports">
+            {info.freeRequests.map((f) => (
+              <li key={f.id}>
+                <span>
+                  <strong>{FREE_STATUS[f.status] || f.status}</strong>{' '}
+                  <span className="muted small">
+                    {f.contact_name} · {f.email} · asked {fmtDate(f.created_at)}
+                  </span>
+                  {f.error && f.status !== 'ready' && <div className="muted small">{f.error}</div>}
+                </span>
+                <span className="small free-req-actions">
+                  {f.status === 'needs_review' && <Link to={`/admin/analysis/${leadId}`}>Analyse by hand</Link>}
+                  {['needs_review', 'failed', 'queued'].includes(f.status) && (
+                    <button className="link-btn small" disabled={busy === `f${f.id}`} onClick={() => act(`f${f.id}`, () => api(`/free-reports/${f.id}/retry`, { method: 'POST' }))}>
+                      Try again
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="small muted">Once the report is made it appears below, where you can change how many months the club gets.</p>
+        </>
       )}
 
       {info?.reportList?.length > 0 && (

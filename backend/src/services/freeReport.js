@@ -149,6 +149,9 @@ export async function createRequest({ email, contactName, clubName, county, pitc
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
     [token, String(email).trim().toLowerCase(), key, contactName, clubName, club, county, pitchType, ip, baseUrl, leadId]
   );
+  // The club shows in the admin Customer portal straight away, before the report is made.
+  // The free trial clock starts when the club first opens its report.
+  await query(`INSERT INTO portal_access (lead_id, status) VALUES ($1, 'trial') ON CONFLICT (lead_id) DO NOTHING`, [leadId]);
   kick();
   return { request: rows[0] };
 }
