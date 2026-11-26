@@ -1,15 +1,15 @@
 // oramara/frontend/src/components/BeforeAfter.jsx
 import { useState } from 'react';
 
-export default function BeforeAfter({ before, after, beforeLabel = 'Before', afterLabel = 'After', caption }) {
+export default function BeforeAfter({ before, after, beforeSrcSet, afterSrcSet, beforeLabel = 'Before', afterLabel = 'After', caption }) {
   const [pos, setPos] = useState(50);
 
   return (
     <figure className="ba-figure">
       <div className="ba">
-        <img src={after} alt={afterLabel} className="ba-img" draggable="false" />
+        <img src={after} srcSet={afterSrcSet} sizes="(max-width: 1240px) 100vw, 1200px" alt={afterLabel} className="ba-img" draggable="false" />
         <div className="ba-before" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-          <img src={before} alt={beforeLabel} className="ba-img" draggable="false" />
+          <img src={before} srcSet={beforeSrcSet} sizes="(max-width: 1240px) 100vw, 1200px" alt={beforeLabel} className="ba-img" draggable="false" />
         </div>
         <span className="ba-label ba-label-left">{beforeLabel}</span>
         <span className="ba-label ba-label-right">{afterLabel}</span>
