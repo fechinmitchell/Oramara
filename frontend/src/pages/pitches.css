@@ -133,3 +133,4 @@
 .request-card { display: flex; flex-direction: column; align-items: flex-start; gap: 1.2rem; margin-bottom: 2.5rem; }
 .request-card .request-points { margin: 0; }
 .talk-first { margin-bottom: 0.2rem; }
+.free-step { margin: 0; font-weight: 600; color: var(--sea); }
