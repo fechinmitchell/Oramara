@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { LEAD_TYPES, PITCH_TYPES, labelFor } from '../../config/options.js';
 import { money } from '../../components/UsageBar.jsx';
+import FreeReportsPanel from './FreeReportsPanel.jsx';
 import './usage.css';
 
 const PROVIDERS = {
@@ -23,7 +24,8 @@ const OPERATIONS = {
   month_image: 'Monthly vigour map',
   tiles: 'Satellite photo tiles',
   photo_date: 'Photo date lookup',
-  overpass: 'Map outline search'
+  overpass: 'Map outline search',
+  geocode: 'Finding a club on the map'
 };
 
 const RANGES = [
@@ -75,6 +77,8 @@ export default function Usage() {
           </select>
         </div>
       </div>
+
+      <FreeReportsPanel />
 
       {error && <p className="error">{error}</p>}
       {!d ? (

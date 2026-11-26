@@ -239,209 +239,8 @@ router.get(
 router.post(
   '/map',
   wrap(async (req, res) => {
-    const { lead_id, pitch_type, label } = req.body;
-    const focusMonth = /^\d{4}-\d{2}$/.test(req.body.month || '') ? req.body.month : null;
-    const period = pickPeriod(req.body.period);
-    const geo = cleanGeoPolygon(req.body.polygon);
-    const grounds = cleanGeoPolygon(req.body.grounds);
-    if (geo.length < 3) throw badRequest('Mark at least 3 corners of the pitch');
-    const pitchType = PITCH_TYPES[pitch_type] ? pitch_type : 'gaa';
-
-    const lead = lead_id ? (await query('SELECT id, name, pitch_profile FROM leads WHERE id = $1', [lead_id])).rows[0] : null;
-    if (lead_id && !lead) throw badRequest('Lead not found');
-    setUsageContext({ leadId: lead?.id || null });
-
-    // Drafts that were never saved are cleared out after a day
-    await query(`DELETE FROM analyses WHERE saved = false AND created_at < NOW() - INTERVAL '1 day'`);
-
-    // Areas marked by hand to leave out: dugouts, a stand, a path cutting across
-    const exclude = (Array.isArray(req.body.exclude) ? req.body.exclude.slice(0, 8) : [])
-      .map(cleanGeoPolygon)
-      .filter((pg) => pg.length >= 3);
-
-    const shot = await captureArea(geo, grounds.length >= 3 ? grounds : []);
-    const result = await analysePitch(shot.image, shot.polygon, shot.width, {
-      ...SATELLITE_SCALE,
-      insetPx: EDGE_INSET_M / shot.metresPerPixel,
-      edgeBandPx: EDGE_BAND_M / shot.metresPerPixel,
-      excludePx: toPixels(shot, exclude)
-    });
-    const centre = [geo.reduce((s, p) => s + p[0], 0) / geo.length, geo.reduce((s, p) => s + p[1], 0) / geo.length];
-    const taken = await photoDate(centre[0], centre[1]);
-    const metresPerPixel = shot.metresPerPixel * (shot.width / result.width);
-    const scale = result.width / shot.width;
-    const groundsPx = shot.groundsPolygon.map(([x, y]) => [Math.round(x * scale), Math.round(y * scale)]);
-    const area = areaM2(geo);
-
-    // Goalmouths: each end captured at the closest zoom available and measured on its own
-    const parts = [];
-    const goalInput = Array.isArray(req.body.goalmouths) ? req.body.goalmouths.slice(0, 2) : [];
-    for (const g of goalInput) {
-      const poly = cleanGeoPolygon(g.polygon);
-      if (poly.length < 3) continue;
-      try {
-        // Zoom 20 is sharpest, but in many rural spots Esri only has a grey "no imagery" picture there,
-        // which has nothing to measure. Step down a zoom level until the goalmouth can be measured.
-        let gShot = null;
-        let gRes = null;
-        let lastErr = null;
-        for (const zoom of [20, 19, 18]) {
-          try {
-            gShot = await captureArea(poly, [], { maxZoom: zoom });
-            gRes = await analysePitch(gShot.image, gShot.polygon, gShot.width, {
-              ...SATELLITE_SCALE,
-              insetPx: 0.5 / gShot.metresPerPixel,
-              minPixels: 60
-            });
-            // A grey placeholder photo is mostly left out as paint or shadow: treat it as no photo
-            if (gRes.skippedPct > 60) throw new Error(`zoom ${gShot.zoom} photo has no usable grass`);
-            break;
-          } catch (err) {
-            lastErr = err;
-            gRes = null;
-          }
-        }
-        if (!gRes) throw lastErr || new Error('No usable photo');
-        parts.push({
-          kind: 'goalmouth',
-          label: String(g.label || 'Goalmouth').slice(0, 60),
-          geo: poly,
-          bounds: gShot.bounds,
-          areaM2: Math.round(areaM2(poly)),
-          zoom: gShot.zoom,
-          result: gRes
-        });
-      } catch (err) {
-        console.error(`Goalmouth capture skipped (${g.label}, ${Math.round(areaM2(poly))} m²):`, err.message);
-      }
-    }
-
-    // Extra pitches (training, juvenile, other) drawn in the same run: each measured on its own
-    const extraInput = Array.isArray(req.body.extra_pitches) ? req.body.extra_pitches.slice(0, 4) : [];
-    for (const [i, x] of extraInput.entries()) {
-      const poly = cleanGeoPolygon(x.polygon);
-      if (poly.length < 3) continue;
-      try {
-        const xShot = await captureArea(poly, grounds.length >= 3 ? grounds : []);
-        const xRes = await analysePitch(xShot.image, xShot.polygon, xShot.width, {
-          ...SATELLITE_SCALE,
-          insetPx: EDGE_INSET_M / xShot.metresPerPixel,
-          edgeBandPx: EDGE_BAND_M / xShot.metresPerPixel,
-          excludePx: toPixels(xShot, exclude)
-        });
-        parts.push({
-          kind: 'pitch',
-          areaKind: String(x.kind || 'training').slice(0, 20),
-          label: String(x.label || `Pitch ${i + 2}`).slice(0, 60),
-          geo: poly,
-          bounds: xShot.bounds,
-          areaM2: Math.round(areaM2(poly)),
-          zoom: xShot.zoom,
-          metresPerPixel: xShot.metresPerPixel * (xShot.width / xRes.width),
-          result: xRes
-        });
-      } catch (err) {
-        console.error('Extra pitch capture skipped:', err.message);
-      }
-    }
-    const goalParts = parts.filter((g) => g.kind === 'goalmouth');
-    const pitchParts = parts.filter((g) => g.kind === 'pitch');
-
-    // Monthly satellite history for the same pitch, if Copernicus is set up. Never blocks the analysis.
-    let months = null;
-    if (sentinelEnabled()) {
-      try {
-        months = await cached(`m:${polyKey(geo)}`, () => monthlyNdvi(geo));
-      } catch (err) {
-        console.error('Monthly satellite data skipped:', err.message);
-      }
-    }
-    const shaped = months ? months.map(shapeMonth) : [];
-
-    const aiReport = await writeReport({
-      goalmouths: goalParts.map((g) => ({ label: g.label, score: g.result.score, thinPct: g.result.stressedPct, strongPct: g.result.healthyPct, areaM2: g.areaM2 })),
-      otherPitches: pitchParts.map((g) => ({ label: g.label, score: g.result.score, thinPct: g.result.stressedPct, strongPct: g.result.healthyPct, areaM2: g.areaM2, zones: g.result.zones })),
-      monthly: shaped,
-      focusMonth,
-      photoTaken: taken?.date || null,
-      period,
-      original: result.original,
-      heatmap: result.heatmap,
-      imagePolygon: result.polygon,
-      groundsPolygon: groundsPx,
-      leadName: lead?.name,
-      profile: lead?.pitch_profile || null,
-      pitchType,
-      metrics: { ...result, excludedAreas: exclude.length },
-      zones: result.zones,
-      metresPerPixel,
-      areaM2: area
-    });
-
-    const imagery = {
-      source: shot.source,
-      zoom: shot.zoom,
-      metresPerPixel,
-      areaM2: Math.round(area),
-      bounds: shot.bounds,
-      grounds: grounds.length >= 3 ? grounds : null,
-      groundsPx,
-      focusMonth,
-      period,
-      areaKind: String(req.body.area_kind || 'main').slice(0, 20),
-      photoDate: taken?.date || null,
-      photoResolutionM: taken?.resolutionM || null,
-      insetM: EDGE_INSET_M,
-      skippedPct: result.skippedPct,
-      removedPct: result.removedPct,
-      edgeBandM: EDGE_BAND_M,
-      edgeScore: result.edgeScore,
-      playScore: result.playScore,
-      exclude: exclude.length ? exclude : null,
-      typicalGreen: result.typicalGreen
-    };
-
-    const { rows } = await query(
-      `INSERT INTO analyses (lead_id, pitch_type, label, image_source, polygon, geo_polygon, imagery, original_jpg, heatmap_png,
-         overlay_png, score, healthy_pct, moderate_pct, stressed_pct, zones, ai_report, ai_model)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-       RETURNING id`,
-      [
-        lead?.id || null,
-        pitchType,
-        label || null,
-        shot.source,
-        JSON.stringify(result.polygon),
-        JSON.stringify(geo),
-        JSON.stringify(imagery),
-        result.original,
-        result.heatmap,
-        result.overlay,
-        result.score,
-        result.healthyPct,
-        result.moderatePct,
-        result.stressedPct,
-        JSON.stringify(result.zones),
-        aiReport ? JSON.stringify(aiReport) : null,
-        aiReport ? claudeModel() : null
-      ]
-    );
-
-    await linkUsageToAnalysis(rows[0].id);
-    for (const g of parts) {
-      await query(
-        `INSERT INTO analysis_parts (analysis_id, kind, label, geo_polygon, bounds, area_m2, zoom, score, healthy_pct, moderate_pct,
-           stressed_pct, original_jpg, heatmap_png, overlay_png, zones, area_kind, metres_per_pixel)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-        [
-          rows[0].id, g.kind, g.label, JSON.stringify(g.geo), JSON.stringify(g.bounds), g.areaM2, g.zoom, g.result.score,
-          g.result.healthyPct, g.result.moderatePct, g.result.stressedPct, g.result.original, g.result.heatmap, g.result.overlay,
-          JSON.stringify(g.result.zones || []), g.areaKind || null, g.metresPerPixel || null
-        ]
-      );
-    }
-    if (months) await storeMonths(rows[0].id, months);
-    res.status(201).json(await loadFull(rows[0].id));
+    const id = await createMapAnalysis(req.body || {});
+    res.status(201).json(await loadFull(id));
   })
 );
 
@@ -795,3 +594,213 @@ function toNumbers(row) {
 }
 
 export default router;
+
+// The whole map analysis: imagery, measurement, goalmouths, extra pitches, monthly satellite data and the
+// written report. Used by the admin map and by the free report form on the website. Returns the new analysis id.
+// options.saved: keep it straight away (the free report does; the admin saves it after a look).
+export async function createMapAnalysis(body, { saved = false } = {}) {
+  const { lead_id, pitch_type, label } = body;
+  const focusMonth = /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : null;
+  const period = pickPeriod(body.period);
+  const geo = cleanGeoPolygon(body.polygon);
+  const grounds = cleanGeoPolygon(body.grounds);
+  if (geo.length < 3) throw badRequest('Mark at least 3 corners of the pitch');
+  const pitchType = PITCH_TYPES[pitch_type] ? pitch_type : 'gaa';
+
+  const lead = lead_id ? (await query('SELECT id, name, pitch_profile FROM leads WHERE id = $1', [lead_id])).rows[0] : null;
+  if (lead_id && !lead) throw badRequest('Lead not found');
+  setUsageContext({ leadId: lead?.id || null });
+
+  // Drafts that were never saved are cleared out after a day
+  await query(`DELETE FROM analyses WHERE saved = false AND created_at < NOW() - INTERVAL '1 day'`);
+
+  // Areas marked by hand to leave out: dugouts, a stand, a path cutting across
+  const exclude = (Array.isArray(body.exclude) ? body.exclude.slice(0, 8) : [])
+    .map(cleanGeoPolygon)
+    .filter((pg) => pg.length >= 3);
+
+  const shot = await captureArea(geo, grounds.length >= 3 ? grounds : []);
+  const result = await analysePitch(shot.image, shot.polygon, shot.width, {
+    ...SATELLITE_SCALE,
+    insetPx: EDGE_INSET_M / shot.metresPerPixel,
+    edgeBandPx: EDGE_BAND_M / shot.metresPerPixel,
+    excludePx: toPixels(shot, exclude)
+  });
+  const centre = [geo.reduce((s, p) => s + p[0], 0) / geo.length, geo.reduce((s, p) => s + p[1], 0) / geo.length];
+  const taken = await photoDate(centre[0], centre[1]);
+  const metresPerPixel = shot.metresPerPixel * (shot.width / result.width);
+  const scale = result.width / shot.width;
+  const groundsPx = shot.groundsPolygon.map(([x, y]) => [Math.round(x * scale), Math.round(y * scale)]);
+  const area = areaM2(geo);
+
+  // Goalmouths: each end captured at the closest zoom available and measured on its own
+  const parts = [];
+  const goalInput = Array.isArray(body.goalmouths) ? body.goalmouths.slice(0, 2) : [];
+  for (const g of goalInput) {
+    const poly = cleanGeoPolygon(g.polygon);
+    if (poly.length < 3) continue;
+    try {
+      // Zoom 20 is sharpest, but in many rural spots Esri only has a grey "no imagery" picture there,
+      // which has nothing to measure. Step down a zoom level until the goalmouth can be measured.
+      let gShot = null;
+      let gRes = null;
+      let lastErr = null;
+      for (const zoom of [20, 19, 18]) {
+        try {
+          gShot = await captureArea(poly, [], { maxZoom: zoom });
+          gRes = await analysePitch(gShot.image, gShot.polygon, gShot.width, {
+            ...SATELLITE_SCALE,
+            insetPx: 0.5 / gShot.metresPerPixel,
+            minPixels: 60
+          });
+          // A grey placeholder photo is mostly left out as paint or shadow: treat it as no photo
+          if (gRes.skippedPct > 60) throw new Error(`zoom ${gShot.zoom} photo has no usable grass`);
+          break;
+        } catch (err) {
+          lastErr = err;
+          gRes = null;
+        }
+      }
+      if (!gRes) throw lastErr || new Error('No usable photo');
+      parts.push({
+        kind: 'goalmouth',
+        label: String(g.label || 'Goalmouth').slice(0, 60),
+        geo: poly,
+        bounds: gShot.bounds,
+        areaM2: Math.round(areaM2(poly)),
+        zoom: gShot.zoom,
+        result: gRes
+      });
+    } catch (err) {
+      console.error(`Goalmouth capture skipped (${g.label}, ${Math.round(areaM2(poly))} m²):`, err.message);
+    }
+  }
+
+  // Extra pitches (training, juvenile, other) drawn in the same run: each measured on its own
+  const extraInput = Array.isArray(body.extra_pitches) ? body.extra_pitches.slice(0, 4) : [];
+  for (const [i, x] of extraInput.entries()) {
+    const poly = cleanGeoPolygon(x.polygon);
+    if (poly.length < 3) continue;
+    try {
+      const xShot = await captureArea(poly, grounds.length >= 3 ? grounds : []);
+      const xRes = await analysePitch(xShot.image, xShot.polygon, xShot.width, {
+        ...SATELLITE_SCALE,
+        insetPx: EDGE_INSET_M / xShot.metresPerPixel,
+        edgeBandPx: EDGE_BAND_M / xShot.metresPerPixel,
+        excludePx: toPixels(xShot, exclude)
+      });
+      parts.push({
+        kind: 'pitch',
+        areaKind: String(x.kind || 'training').slice(0, 20),
+        label: String(x.label || `Pitch ${i + 2}`).slice(0, 60),
+        geo: poly,
+        bounds: xShot.bounds,
+        areaM2: Math.round(areaM2(poly)),
+        zoom: xShot.zoom,
+        metresPerPixel: xShot.metresPerPixel * (xShot.width / xRes.width),
+        result: xRes
+      });
+    } catch (err) {
+      console.error('Extra pitch capture skipped:', err.message);
+    }
+  }
+  const goalParts = parts.filter((g) => g.kind === 'goalmouth');
+  const pitchParts = parts.filter((g) => g.kind === 'pitch');
+
+  // Monthly satellite history for the same pitch, if Copernicus is set up. Never blocks the analysis.
+  let months = null;
+  if (sentinelEnabled()) {
+    try {
+      months = await cached(`m:${polyKey(geo)}`, () => monthlyNdvi(geo));
+    } catch (err) {
+      console.error('Monthly satellite data skipped:', err.message);
+    }
+  }
+  const shaped = months ? months.map(shapeMonth) : [];
+
+  const aiReport = await writeReport({
+    goalmouths: goalParts.map((g) => ({ label: g.label, score: g.result.score, thinPct: g.result.stressedPct, strongPct: g.result.healthyPct, areaM2: g.areaM2 })),
+    otherPitches: pitchParts.map((g) => ({ label: g.label, score: g.result.score, thinPct: g.result.stressedPct, strongPct: g.result.healthyPct, areaM2: g.areaM2, zones: g.result.zones })),
+    monthly: shaped,
+    focusMonth,
+    photoTaken: taken?.date || null,
+    period,
+    original: result.original,
+    heatmap: result.heatmap,
+    imagePolygon: result.polygon,
+    groundsPolygon: groundsPx,
+    leadName: lead?.name,
+    profile: lead?.pitch_profile || null,
+    pitchType,
+    metrics: { ...result, excludedAreas: exclude.length },
+    zones: result.zones,
+    metresPerPixel,
+    areaM2: area
+  });
+
+  const imagery = {
+    source: shot.source,
+    zoom: shot.zoom,
+    metresPerPixel,
+    areaM2: Math.round(area),
+    bounds: shot.bounds,
+    grounds: grounds.length >= 3 ? grounds : null,
+    groundsPx,
+    focusMonth,
+    period,
+    areaKind: String(body.area_kind || 'main').slice(0, 20),
+    photoDate: taken?.date || null,
+    photoResolutionM: taken?.resolutionM || null,
+    insetM: EDGE_INSET_M,
+    skippedPct: result.skippedPct,
+    removedPct: result.removedPct,
+    edgeBandM: EDGE_BAND_M,
+    edgeScore: result.edgeScore,
+    playScore: result.playScore,
+    exclude: exclude.length ? exclude : null,
+    typicalGreen: result.typicalGreen
+  };
+
+  const { rows } = await query(
+    `INSERT INTO analyses (lead_id, pitch_type, label, image_source, polygon, geo_polygon, imagery, original_jpg, heatmap_png,
+       overlay_png, score, healthy_pct, moderate_pct, stressed_pct, zones, ai_report, ai_model)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+     RETURNING id`,
+    [
+      lead?.id || null,
+      pitchType,
+      label || null,
+      shot.source,
+      JSON.stringify(result.polygon),
+      JSON.stringify(geo),
+      JSON.stringify(imagery),
+      result.original,
+      result.heatmap,
+      result.overlay,
+      result.score,
+      result.healthyPct,
+      result.moderatePct,
+      result.stressedPct,
+      JSON.stringify(result.zones),
+      aiReport ? JSON.stringify(aiReport) : null,
+      aiReport ? claudeModel() : null
+    ]
+  );
+
+  await linkUsageToAnalysis(rows[0].id);
+  for (const g of parts) {
+    await query(
+      `INSERT INTO analysis_parts (analysis_id, kind, label, geo_polygon, bounds, area_m2, zoom, score, healthy_pct, moderate_pct,
+         stressed_pct, original_jpg, heatmap_png, overlay_png, zones, area_kind, metres_per_pixel)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+      [
+        rows[0].id, g.kind, g.label, JSON.stringify(g.geo), JSON.stringify(g.bounds), g.areaM2, g.zoom, g.result.score,
+        g.result.healthyPct, g.result.moderatePct, g.result.stressedPct, g.result.original, g.result.heatmap, g.result.overlay,
+        JSON.stringify(g.result.zones || []), g.areaKind || null, g.metresPerPixel || null
+      ]
+    );
+  }
+  if (months) await storeMonths(rows[0].id, months);
+  if (saved) await query('UPDATE analyses SET saved = true WHERE id = $1', [rows[0].id]);
+  return rows[0].id;
+}
