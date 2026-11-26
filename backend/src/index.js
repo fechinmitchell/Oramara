@@ -13,6 +13,8 @@ import usageRoutes from './routes/usage.js';
 import portalRoutes from './routes/portal.js';
 import portalAdminRoutes from './routes/portalAdmin.js';
 import contactRoutes from './routes/contacts.js';
+import freeReportRoutes from './routes/freeReports.js';
+import { startQueue } from './services/freeReport.js';
 import { usageContext } from './usage.js';
 import { wrap } from './routes/wrap.js';
 
@@ -72,6 +74,7 @@ app.use('/api/analyses', requireAuth, usageContext, analysisRoutes);
 app.use('/api/usage', requireAuth, usageRoutes);
 app.use('/api/portal-admin', requireAuth, portalAdminRoutes);
 app.use('/api/contacts', requireAuth, usageContext, contactRoutes);
+app.use('/api/free-reports', requireAuth, usageContext, freeReportRoutes);
 // The customer portal for clubs: its own logins, never the admin's
 const portalLimit = limitByIp({ name: 'portal-login', max: 20, windowMs: 15 * 60 * 1000 });
 app.use('/api/portal/login', portalLimit);
@@ -90,6 +93,9 @@ try {
   console.error('Database setup failed:', err.message || err.code || String(err));
   process.exit(1);
 }
+
+// Free reports asked for on the website are made one at a time in the background
+startQueue();
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`API listening on ${port}. Allowed sites: ${[...origins].join(', ')}`));

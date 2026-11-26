@@ -5,6 +5,7 @@ import Footer from '../components/Footer.jsx';
 import Wave from '../components/Wave.jsx';
 import BeforeAfter from '../components/BeforeAfter.jsx';
 import EnquiryForm from '../components/EnquiryForm.jsx';
+import FreeReportModal from '../components/FreeReportModal.jsx';
 import { BRAND, PRICING, TECH } from '../config/brand.js';
 import { FORMATS, USES, doseFor } from '../config/products.js';
 import { HOW_IT_WORKS, REPORT_CONTENTS } from '../config/pitchDemo.js';
@@ -22,6 +23,17 @@ export default function Pitches() {
   const report = CLIFDEN_REPORT;
   const use = USES.find((u) => u.id === 'gaa');
   const dose = doseFor({ areaHa: use.areaHa, format: pouch });
+
+  // The free report popup. A link with ?report=… (from the queue message) opens it at that request.
+  const [modal, setModal] = useState({ open: false, token: null });
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('report');
+    if (token && /^[A-Za-z0-9_-]{20,64}$/.test(token)) setModal({ open: true, token });
+  }, []);
+  const openReport = (e) => {
+    e?.preventDefault();
+    setModal({ open: true, token: null });
+  };
 
   // Phone bar asking for the free report: hidden while the hero buttons or the form are on screen
   const [showBar, setShowBar] = useState(false);
@@ -51,13 +63,13 @@ export default function Pitches() {
           </p>
 
           <div className="hero-cta">
-            <a href="#request" className="btn btn-gold btn-big">Get my club's free report</a>
+            <a href="#request" onClick={openReport} className="btn btn-gold btn-big">Get my club's free report</a>
             <a href="#example" className="btn btn-outline-light btn-big">See a real report</a>
           </div>
           <ul className="hero-points">
             <li>Free, no strings attached</li>
             <li>No visit needed, we work from satellite imagery</li>
-            <li>In your inbox within a week</li>
+            <li>Ready to open in about a minute</li>
           </ul>
 
           <p id="example" className="real-tag">
@@ -104,7 +116,7 @@ export default function Pitches() {
                 For the pitch and its surrounds, in about {dose.waterLitres.toLocaleString()} L of water, monthly
                 March to October.
               </p>
-              <a href="#request" className="btn panel-cta">Get this for your pitch, free</a>
+              <a href="#request" onClick={openReport} className="btn panel-cta">Get this for your pitch, free</a>
             </aside>
           </div>
         </div>
@@ -138,9 +150,9 @@ export default function Pitches() {
           <div className="cta-band">
             <div>
               <h3>Want to see your own pitch like this?</h3>
-              <p>Tell us your club and we will send the same report for your pitch, free.</p>
+              <p>Tell us your club and get the same report for your pitch, with a 3 month care plan, free.</p>
             </div>
-            <a href="#request" className="btn btn-gold btn-big">Get my club's free report</a>
+            <a href="#request" onClick={openReport} className="btn btn-gold btn-big">Get my club's free report</a>
           </div>
         </div>
       </section>
@@ -180,8 +192,8 @@ export default function Pitches() {
               <span className="badge">Free</span>
               <h3>Free first report</h3>
               <p className="option-price">€0</p>
-              <p className="muted">One full health report for your pitch, no strings attached.</p>
-              <a href="#request" className="btn">Request my free report</a>
+              <p className="muted">A full health report for your pitch with a 3 month care plan, ready in about a minute.</p>
+              <a href="#request" onClick={openReport} className="btn">Get my free report</a>
             </div>
             <div className="card option">
               <h3>{BRAND.product}</h3>
@@ -208,22 +220,36 @@ export default function Pitches() {
           <p className="eyebrow">Saor in Aisce<small>Free report</small></p>
           <h2>Get your club's free {TECH.name} report</h2>
           <p className="section-lead">
-            Tell us your club and county and we will find your pitch. Your report and a simple plan for your grounds
-            team arrive by email within a week.
+            Tell us your name, email and club. We find your pitch from satellite and your report is ready to open in
+            about a minute.
           </p>
-          <ul className="request-points">
-            <li>Health score and colour map of your pitch</li>
-            <li>Problem zones with likely causes and simple actions</li>
-            <li>Recommended seaweed dose for your pitch</li>
-          </ul>
-          <EnquiryForm defaultType="gaa" defaultInterest={`Free ${TECH.name} report`} />
+          <div className="card request-card">
+            <ul className="request-points">
+              <li>Health score and colour map of your pitch</li>
+              <li>Problem zones with likely causes and simple actions</li>
+              <li>A care plan for the next 3 months</li>
+              <li>Recommended seaweed dose for your pitch</li>
+            </ul>
+            <a href="#request" onClick={openReport} className="btn btn-gold btn-big">Get my club's free report</a>
+          </div>
+
+          <h3 className="talk-first">Prefer to talk first, or want a sample of {BRAND.product}?</h3>
+          <p className="muted">Send us a message and we will get back to you.</p>
+          <EnquiryForm defaultType="gaa" defaultInterest={`Sample and ${TECH.name} report`} />
         </div>
       </section>
       <Wave from={MIST} to={ATLANTIC} flip />
 
       <Footer />
 
-      <a href="#request" className={`sticky-cta ${showBar ? 'show' : ''}`} aria-hidden={!showBar} tabIndex={showBar ? 0 : -1}>Get my club's free report</a>
+      <FreeReportModal
+        open={modal.open}
+        resumeToken={modal.token}
+        type="gaa"
+        onClose={() => setModal({ open: false, token: null })}
+      />
+
+      <a href="#request" onClick={openReport} className={`sticky-cta ${showBar ? 'show' : ''}`} aria-hidden={!showBar} tabIndex={showBar ? 0 : -1}>Get my club's free report</a>
     </>
   );
 }

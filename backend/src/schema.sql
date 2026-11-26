@@ -233,3 +233,37 @@ CREATE TABLE IF NOT EXISTS portal_events (
 );
 CREATE INDEX IF NOT EXISTS portal_events_lead_idx ON portal_events (lead_id, created_at DESC);
 ALTER TABLE portal_links ADD COLUMN IF NOT EXISTS trial_days INTEGER NOT NULL DEFAULT 30;
+-- ---------- Free reports from the website ----------
+-- Settings the team changes in the admin, such as the daily spend cap for free reports
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- One free report per email address. email_key is the address tidied up (lower case, no +tags,
+-- no dots for Gmail) so the same inbox cannot ask twice. status: pending, running, ready, queued, needs_review, failed
+CREATE TABLE IF NOT EXISTS free_reports (
+  id SERIAL PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL,
+  email_key TEXT NOT NULL UNIQUE,
+  contact_name TEXT,
+  club_name TEXT NOT NULL,
+  club_key TEXT NOT NULL,
+  county TEXT,
+  pitch_type TEXT NOT NULL DEFAULT 'gaa',
+  ip TEXT,
+  base_url TEXT,
+  lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+  analysis_id INTEGER REFERENCES analyses(id) ON DELETE SET NULL,
+  link_url TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  started_at TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS free_reports_club_idx ON free_reports (club_key);
+CREATE INDEX IF NOT EXISTS free_reports_status_idx ON free_reports (status, created_at);

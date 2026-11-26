@@ -107,3 +107,29 @@
   .sticky-cta.show { transform: none; }
   .site-footer { padding-bottom: 5rem; }
 }
+
+/* Free report popup */
+.free-modal-bg { z-index: 60; }
+.free-modal { position: relative; width: min(520px, 100%); padding: 1.8rem 1.6rem 1.4rem; color: var(--ink); }
+.free-modal h2 { font-size: 1.6rem; margin: 0.2rem 0 0.5rem; padding-right: 1.5rem; }
+.free-kicker { margin: 0; font: 600 0.75rem var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-dark); }
+.free-close { position: absolute; top: 0.6rem; right: 0.7rem; width: 36px; height: 36px; border: 0; background: transparent; font-size: 1.6rem; line-height: 1; color: var(--muted); cursor: pointer; border-radius: 50%; }
+.free-close:hover { background: #eef2f1; color: var(--ink); }
+.free-fields { display: grid; gap: 0.8rem; margin: 1.2rem 0 1rem; }
+.free-fields label { display: grid; gap: 0.3rem; font-weight: 600; font-size: 0.9rem; }
+.free-fields input, .free-fields select { font: inherit; font-weight: 400; padding: 0.65rem 0.75rem; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.free-submit { width: 100%; }
+.free-modal .fine-print { text-align: center; word-break: break-all; }
+.free-state { text-align: center; padding: 0.6rem 0 0.2rem; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.free-state h2 { padding-right: 0; }
+.free-state p { margin: 0; }
+.free-link { word-break: break-all; font-size: 0.88rem; background: var(--mist, #eef4f3); padding: 0.6rem 0.8rem; border-radius: 8px; }
+.free-again { border: 0; background: none; color: var(--muted); text-decoration: underline; font: inherit; font-size: 0.85rem; cursor: pointer; }
+.free-tick { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--green); color: #fff; font-size: 1.8rem; font-weight: 700; }
+.free-spinner { width: 48px; height: 48px; border-radius: 50%; border: 4px solid #dfe8e5; border-top-color: var(--sea); animation: free-spin 0.9s linear infinite; }
+@keyframes free-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .free-spinner { animation-duration: 3s; } }
+
+.request-card { display: flex; flex-direction: column; align-items: flex-start; gap: 1.2rem; margin-bottom: 2.5rem; }
+.request-card .request-points { margin: 0; }
+.talk-first { margin-bottom: 0.2rem; }

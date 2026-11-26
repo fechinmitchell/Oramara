@@ -62,3 +62,8 @@ export async function linkUsageToAnalysis(analysisId) {
   ctx.analysisId = analysisId;
   if (ids.length) await query('UPDATE api_usage SET analysis_id = $1 WHERE id = ANY($2::bigint[])', [analysisId, ids]);
 }
+// Run work outside a web request (the free report queue) with its own usage context, so the calls are
+// recorded against the right club like any other
+export function runWithUsage(values, fn) {
+  return store.run({ userId: null, sessionId: null, leadId: null, analysisId: null, ids: [], ...values }, fn);
+}

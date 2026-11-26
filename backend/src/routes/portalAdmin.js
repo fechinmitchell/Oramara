@@ -159,7 +159,7 @@ async function checkAddress(email) {
 }
 
 // A report link: opens straight from the email, no password. The trial starts on the first open.
-async function createLink(req, leadId, analysisId, { email, name, trialDays }) {
+export async function createLink(req, leadId, analysisId, { email, name, trialDays }) {
   email = String(email || '').trim().toLowerCase();
   name = String(name || '').trim().slice(0, 80) || null;
   trialDays = Math.min(365, Math.max(1, Number(trialDays) || 30));
