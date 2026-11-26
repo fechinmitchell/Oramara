@@ -1,4 +1,5 @@
 // oramara/frontend/src/pages/Pitches.jsx
+import { useEffect, useState } from 'react';
 import Header from '../components/Header.jsx';
 import Footer from '../components/Footer.jsx';
 import Wave from '../components/Wave.jsx';
@@ -22,6 +23,20 @@ export default function Pitches() {
   const use = USES.find((u) => u.id === 'gaa');
   const dose = doseFor({ areaHa: use.areaHa, format: pouch });
 
+  // Phone bar asking for the free report: hidden while the hero buttons or the form are on screen
+  const [showBar, setShowBar] = useState(false);
+  useEffect(() => {
+    const targets = ['.hero-cta', '#request'].map((sel) => document.querySelector(sel)).filter(Boolean);
+    if (!targets.length || !('IntersectionObserver' in window)) return undefined;
+    const visible = new Set();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => (e.isIntersecting ? visible.add(e.target) : visible.delete(e.target)));
+      setShowBar(visible.size === 0);
+    });
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+
   return (
     <>
       <Header />
@@ -32,10 +47,20 @@ export default function Pitches() {
           <h1>See your pitch from above.</h1>
           <p className="lead lead-light">
             A health map of your whole surface, the problem areas marked, and a simple plan for your grounds team.
-            Your first report is free.
+            The first report for your club is free.
           </p>
 
-          <p className="real-tag">
+          <div className="hero-cta">
+            <a href="#request" className="btn btn-gold btn-big">Get my club's free report</a>
+            <a href="#example" className="btn btn-outline-light btn-big">See a real report</a>
+          </div>
+          <ul className="hero-points">
+            <li>Free, no strings attached</li>
+            <li>No visit needed, we work from satellite imagery</li>
+            <li>In your inbox within a week</li>
+          </ul>
+
+          <p id="example" className="real-tag">
             Real report: {report.club}, {report.place}
           </p>
 
@@ -79,6 +104,7 @@ export default function Pitches() {
                 For the pitch and its surrounds, in about {dose.waterLitres.toLocaleString()} L of water, monthly
                 March to October.
               </p>
+              <a href="#request" className="btn panel-cta">Get this for your pitch, free</a>
             </aside>
           </div>
         </div>
@@ -108,6 +134,14 @@ export default function Pitches() {
             not a problem with the turf. Reports show where to look and what usually helps. They are a guide for your
             grounds team, not a diagnosis.
           </p>
+
+          <div className="cta-band">
+            <div>
+              <h3>Want to see your own pitch like this?</h3>
+              <p>Tell us your club and we will send the same report for your pitch, free.</p>
+            </div>
+            <a href="#request" className="btn btn-gold btn-big">Get my club's free report</a>
+          </div>
         </div>
       </section>
 
@@ -171,15 +205,25 @@ export default function Pitches() {
       <Wave from={WHITE} to={MIST} />
       <section id="request" className="section alt">
         <div className="container narrow">
-          <p className="eyebrow">Teagmháil<small>Request</small></p>
-          <h2>Request your free {TECH.name} report</h2>
-          <p className="section-lead">Tell us where your pitch is. We will send your report and a simple plan within a week.</p>
+          <p className="eyebrow">Saor in Aisce<small>Free report</small></p>
+          <h2>Get your club's free {TECH.name} report</h2>
+          <p className="section-lead">
+            Tell us your club and county and we will find your pitch. Your report and a simple plan for your grounds
+            team arrive by email within a week.
+          </p>
+          <ul className="request-points">
+            <li>Health score and colour map of your pitch</li>
+            <li>Problem zones with likely causes and simple actions</li>
+            <li>Recommended seaweed dose for your pitch</li>
+          </ul>
           <EnquiryForm defaultType="gaa" defaultInterest={`Free ${TECH.name} report`} />
         </div>
       </section>
       <Wave from={MIST} to={ATLANTIC} flip />
 
       <Footer />
+
+      <a href="#request" className={`sticky-cta ${showBar ? 'show' : ''}`} aria-hidden={!showBar} tabIndex={showBar ? 0 : -1}>Get my club's free report</a>
     </>
   );
 }
