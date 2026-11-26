@@ -1,0 +1,50 @@
+# oramara/docker-compose.yml
+# Runs the whole of Oramara on your own computer: the Postgres database, the backend API
+# and the website with the admin. Start it with: docker compose up -d
+# Stop it with: docker compose down   (your data is kept in the oramara-data volume)
+# Settings come from the .env file next to this one (copy .env.example to .env first).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oramara
+      POSTGRES_PASSWORD: oramara
+      POSTGRES_DB: oramara
+    volumes:
+      - oramara-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oramara -d oramara"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The database lives in the db container above, without SSL since it never leaves your computer
+      DATABASE_URL: postgres://oramara:oramara@db:5432/oramara
+      DATABASE_SSL: "false"
+      PORT: "4000"
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      # Your browser talks to the backend on this address
+      VITE_API_URL: http://localhost:4000
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  oramara-data:

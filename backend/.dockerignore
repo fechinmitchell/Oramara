@@ -1,0 +1,4 @@
+# oramara/backend/.dockerignore
+node_modules
+.env
+.env.*
