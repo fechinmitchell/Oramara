@@ -24,12 +24,29 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
-const origins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+// Sites allowed to call the API. A trailing slash or capital letters in CORS_ORIGINS
+// would otherwise block the browser, so every entry is tidied the same way the browser sends it.
+const tidyOrigin = (o) => String(o || '').trim().replace(/\/+$/, '').toLowerCase();
+const origins = new Set(
+  [process.env.CORS_ORIGINS || 'http://localhost:5173', 'https://oramara.vercel.app', process.env.PORTAL_URL]
+    .join(',')
+    .split(',')
+    .map(tidyOrigin)
+    .filter(Boolean)
+);
+// Vercel preview builds of this project, for checking a change before it goes live
+const previewOrigin = /^https:\/\/oramara(-[a-z0-9-]+)?-fechinmitchells-projects\.vercel\.app$/;
 
-app.use(cors({ origin: origins }));
+app.use(
+  cors({
+    origin(origin, done) {
+      // No origin means a direct call (health checks, curl), not a browser page
+      if (!origin || origins.has(tidyOrigin(origin)) || previewOrigin.test(tidyOrigin(origin))) return done(null, true);
+      console.warn(`Blocked a call from ${origin}. Add it to CORS_ORIGINS if it should be allowed.`);
+      done(null, false);
+    }
+  })
+);
 app.use((req, res, next) => {
   res.set({
     'X-Content-Type-Options': 'nosniff',
@@ -75,4 +92,4 @@ try {
 }
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`API listening on ${port}`));
+app.listen(port, () => console.log(`API listening on ${port}. Allowed sites: ${[...origins].join(', ')}`));
