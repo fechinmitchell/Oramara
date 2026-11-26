@@ -1,0 +1,11 @@
+{
+    "name": "oramara",
+    "private": true,
+    "type": "module",
+    "scripts": {
+      "dev": "node scripts/dev.mjs",
+      "migrate": "npm --prefix backend run migrate",
+      "setup": "npm --prefix backend install && npm --prefix frontend install",
+      "db:stop": "docker stop oramara-db"
+    }
+  }
