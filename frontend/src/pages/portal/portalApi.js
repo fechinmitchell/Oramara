@@ -1,6 +1,6 @@
 // oramara/frontend/src/pages/portal/portalApi.js
 // Calls for the customer portal. Clubs have their own login, kept apart from the admin token.
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+import { API_URL } from '../../config/apiBase.js';
 const TOKEN_KEY = 'fieldfalcon_portal_token';
 
 export const portalAuth = {

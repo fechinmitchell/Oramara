@@ -1,5 +1,6 @@
 // oramara/frontend/src/api.js
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+import { API_URL } from './config/apiBase.js';
+
 const TOKEN_KEY = 'oramara_admin_token';
 
 export const auth = {
@@ -36,7 +37,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
     });
   } catch {
     // No answer at all: the backend is down, or VITE_API_URL is not pointing at it
-    throw new Error('Cannot reach the FieldFalcon server right now. Please try again in a minute.');
+    throw new Error('Cannot reach the FieldFalcon server. It may be waking up, so please try again in a minute.');
   }
 
   const data = await res.json().catch(() => ({}));

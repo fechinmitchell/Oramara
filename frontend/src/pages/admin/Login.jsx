@@ -1,8 +1,9 @@
 // oramara/frontend/src/pages/admin/Login.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, auth } from '../../api.js';
 import { BRAND } from '../../config/brand.js';
+import { wakeServer } from '../../config/apiBase.js';
 
 export default function Login() {
   const nav = useNavigate();
@@ -10,6 +11,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Start waking the server as soon as the page opens
+  useEffect(() => {
+    wakeServer();
+  }, []);
 
   async function submit(e) {
     e.preventDefault();

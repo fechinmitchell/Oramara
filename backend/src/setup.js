@@ -42,7 +42,14 @@ export async function ensureSchema() {
 export async function seedAdmin() {
   const email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD || '';
-  if (!email || !password) return;
+  if (!email || !password) {
+    console.log('ADMIN_EMAIL or ADMIN_PASSWORD is not set, so no admin login was made on start.');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    console.error(`ADMIN_EMAIL "${email}" is not a valid email address, so no admin login was made.`);
+    return;
+  }
 
   if (password.length < MIN_PASSWORD) {
     console.error(`ADMIN_PASSWORD needs at least ${MIN_PASSWORD} characters, so no admin login was made.`);
@@ -60,5 +67,7 @@ export async function seedAdmin() {
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     await query('UPDATE users SET password_hash = $1, password_changed_at = NOW() WHERE id = $2', [hash, rows[0].id]);
     console.log(`Admin password for ${email} was reset from ADMIN_PASSWORD. Remove ADMIN_RESET_PASSWORD now.`);
+  } else {
+    console.log(`Admin login for ${email} already exists. Its password is changed on the Account page.`);
   }
 }
