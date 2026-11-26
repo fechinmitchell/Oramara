@@ -16,6 +16,7 @@ import { createLink } from '../routes/portalAdmin.js';
 import { autoOutline, overpassCoolingOff } from './overpass.js';
 import { captureArea, pixelToLatLon } from './imagery.js';
 import { claudeEnabled, locatePitch } from './claudeReport.js';
+import { fixLink } from '../siteUrl.js';
 
 export const FREE_MONTHS = 3;
 const TRIAL_DAYS = 90;
@@ -182,7 +183,7 @@ export function publicView(r, settings) {
     token: r.token,
     club: r.club_name,
     status: r.status,
-    url: r.status === 'ready' ? r.link_url : null,
+    url: r.status === 'ready' ? fixLink(r.link_url) : null,
     months: FREE_MONTHS,
     paused: settings ? !settings.enabled : false
   };
