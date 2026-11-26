@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Logins made before a password change stop working once it changes
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS leads (
   id SERIAL PRIMARY KEY,

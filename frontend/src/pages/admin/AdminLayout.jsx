@@ -26,6 +26,7 @@ export default function AdminLayout() {
           <NavLink to="/admin/analysis">Turf analysis</NavLink>
           <NavLink to="/admin/portal">Customer portal</NavLink>
           <NavLink to="/admin/usage">API usage</NavLink>
+          <NavLink to="/admin/account">Account</NavLink>
         </nav>
         <a href="/" style={{ color: "#c3d4ce", fontSize: "0.9rem" }}>View website</a>
         <button className="btn btn-ghost btn-small" onClick={logout}>Log out</button>

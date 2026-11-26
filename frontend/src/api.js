@@ -27,11 +27,17 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(`${API_URL}/api${path}`, {
-    method,
-    headers,
-    body: form || (body !== undefined ? JSON.stringify(body) : undefined)
-  });
+  let res;
+  try {
+    res = await fetch(`${API_URL}/api${path}`, {
+      method,
+      headers,
+      body: form || (body !== undefined ? JSON.stringify(body) : undefined)
+    });
+  } catch {
+    // No answer at all: the backend is down, or VITE_API_URL is not pointing at it
+    throw new Error('Cannot reach the FieldFalcon server right now. Please try again in a minute.');
+  }
 
   const data = await res.json().catch(() => ({}));
 
