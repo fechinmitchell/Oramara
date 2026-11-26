@@ -41,7 +41,7 @@ router.post(
 // Bots: a hidden field people never fill, and a form sent faster than a person could type it.
 // People: a few tries per address per hour and per day, then one report per inbox and per club.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const MIN_FILL_MS = 3000;
+const MIN_FILL_MS = 2000;
 router.post(
   '/free-report',
   limitByIp({ name: 'free-report-hour', max: 5, windowMs: 60 * 60 * 1000 }),
@@ -50,10 +50,16 @@ router.post(
     const b = req.body || {};
     const settings = await getSettings();
 
-    // Looks like a bot: answer as if all went well and do nothing
-    const openedFor = Date.now() - Number(b.openedAt || 0);
-    if (b.company_website || !Number(b.openedAt) || openedFor < MIN_FILL_MS) {
+    // Hidden field only a bot fills: answer as if all went well and do nothing.
+    // (It has a name browsers do not autofill, so a real person never trips it.)
+    if (b.ff_extra) {
       return res.json({ status: 'received', club: clean(b.clubName, 200), months: FREE_MONTHS });
+    }
+    // Sent faster than a person could type. The browser measures the time itself (fillMs), because the
+    // visitor's clock and ours never quite agree. A person who really was that quick just presses again.
+    const fillMs = Number(b.fillMs);
+    if (!Number.isFinite(fillMs) || fillMs < MIN_FILL_MS) {
+      throw badRequest('Please check your details and press the button again.');
     }
 
     const clubName = clean(b.clubName, 120);

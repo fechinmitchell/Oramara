@@ -8,7 +8,14 @@ import { wakeServer } from '../config/apiBase.js';
 
 const SAVED_KEY = 'oramara_free_report';
 const POLL_MS = 5000;
-const WAIT_LIMIT_MS = 4 * 60 * 1000;
+const SLOW_MS = 3 * 60 * 1000;
+const STEPS = [
+  [0, 'Finding your pitch on the map'],
+  [15000, 'Fetching the satellite photo'],
+  [30000, 'Mapping the health of the turf'],
+  [50000, 'Writing your 3 month care plan'],
+  [80000, 'Putting your report together']
+];
 
 const load = () => {
   try {
@@ -27,10 +34,11 @@ const save = (v) => {
 export const savedFreeReport = load;
 
 export default function FreeReportModal({ open, onClose, type = 'gaa', resumeToken = null }) {
-  const [form, setForm] = useState({ contactName: '', email: '', clubName: '', county: '', company_website: '' });
+  const [form, setForm] = useState({ contactName: '', email: '', clubName: '', county: '', ff_extra: '' });
   const [stage, setStage] = useState('form'); // form, sending, working, ready, queued, review, club_done, received
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
+  const [elapsed, setElapsed] = useState(0);
   const openedAt = useRef(0);
   const started = useRef(0);
   const first = useRef(null);
@@ -70,15 +78,16 @@ export default function FreeReportModal({ open, onClose, type = 'gaa', resumeTok
         const r = await api(`/public/free-report/${report.token}`);
         if (stop) return;
         setReport((x) => ({ ...x, ...r }));
-        if (r.status === 'ready') {
+        if (r.status === 'ready' && r.url) {
           setStage('ready');
+          // Straight on to the report; the button stays in case the browser blocks the move
+          setTimeout(() => window.location.assign(r.url), 900);
         } else if (r.status === 'queued') {
           setStage('queued');
         } else if (r.status === 'needs_review' || r.status === 'failed') {
           setStage('review');
-        } else if (Date.now() - started.current > WAIT_LIMIT_MS) {
-          setStage('queued');
         }
+        setElapsed(Date.now() - started.current);
       } catch (err) {
         if (stop) return;
         if (/could not find/i.test(err.message)) {
@@ -106,7 +115,7 @@ export default function FreeReportModal({ open, onClose, type = 'gaa', resumeTok
     try {
       const r = await api('/public/free-report', {
         method: 'POST',
-        body: { ...form, type, openedAt: openedAt.current }
+        body: { ...form, type, fillMs: Date.now() - openedAt.current }
       });
       if (r.status === 'club_done') {
         setReport(r);
@@ -121,6 +130,7 @@ export default function FreeReportModal({ open, onClose, type = 'gaa', resumeTok
       save({ token: r.token, club: r.club });
       setReport(r);
       started.current = Date.now();
+      setElapsed(0);
       setStage('working');
     } catch (err) {
       setError(err.message);
@@ -172,7 +182,7 @@ export default function FreeReportModal({ open, onClose, type = 'gaa', resumeTok
                   ))}
                 </select>
               </label>
-              <input className="hp" tabIndex={-1} autoComplete="off" value={form.company_website} onChange={set('company_website')} aria-hidden="true" />
+              <input className="hp" name="ff_extra" tabIndex={-1} autoComplete="new-password" data-lpignore="true" data-1p-ignore value={form.ff_extra} onChange={set('ff_extra')} aria-hidden="true" />
             </div>
             {error && <p className="error">{error}</p>}
             <button className="btn btn-big free-submit" disabled={stage === 'sending'}>
@@ -186,9 +196,11 @@ export default function FreeReportModal({ open, onClose, type = 'gaa', resumeTok
           <div className="free-state" aria-live="polite">
             <span className="free-spinner" aria-hidden="true" />
             <h2 id="free-modal-title">Making the report for {club}</h2>
+            <p className="free-step">{[...STEPS].reverse().find(([at]) => elapsed >= at)[1]}...</p>
             <p className="muted">
-              Finding your pitch, fetching the satellite photo and mapping the turf. This usually takes about a minute,
-              so keep this window open.
+              {elapsed > SLOW_MS
+                ? 'This one is taking longer than usual. Keep this window open and it will open as soon as it is ready.'
+                : 'This usually takes about a minute. Keep this window open and your report will open by itself.'}
             </p>
           </div>
         )}
@@ -197,7 +209,7 @@ export default function FreeReportModal({ open, onClose, type = 'gaa', resumeTok
           <div className="free-state" aria-live="polite">
             <span className="free-tick" aria-hidden="true">✓</span>
             <h2 id="free-modal-title">Your report for {club} is ready</h2>
-            <p className="muted">It includes the health map, the problem areas and a care plan for the next 3 months.</p>
+            <p className="muted">Opening it now. It includes the health map, the problem areas and a care plan for the next 3 months.</p>
             <a className="btn btn-gold btn-big" href={report.url}>Open my report</a>
             <p className="fine-print">Save this link to come back to it: <a href={report.url}>{report.url}</a></p>
             <button type="button" className="free-again" onClick={startAgain}>Asking for a different club? Start again</button>
