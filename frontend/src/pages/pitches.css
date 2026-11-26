@@ -69,3 +69,8 @@
   .report-contents ul { columns: 1; }
   .sport-tabs { display: flex; flex-wrap: wrap; }
 }
+/* Real Clifden GAA report in the hero */
+.real-tag { display: inline-block; margin: 1.6rem 0 1.4rem; padding: 0.45rem 0.9rem; border-radius: 8px; font: 600 0.9rem var(--sans); color: var(--celtic-green); background: var(--gold-light); }
+.pitch-ba .ba { aspect-ratio: var(--ba-ratio, 4 / 3); max-height: none; box-shadow: 0 0 0 1px rgba(217, 178, 90, 0.7), 0 0 0 7px rgba(217, 178, 90, 0.12), 0 24px 50px rgba(0, 0, 0, 0.35); }
+.demo-panel .small { margin-top: 0.8rem; }
+.zone-share { font-size: 0.9rem; font-weight: 600; color: var(--sea); }
