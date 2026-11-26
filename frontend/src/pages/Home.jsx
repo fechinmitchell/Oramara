@@ -54,8 +54,10 @@ export default function Home() {
       <section className="showcase">
         <div className="container">
           <BeforeAfter
-            before="/images/PNG/before-photo.png"
-            after="/images/PNG/after-photo.png"
+            before="/images/slider/before-2400.jpg"
+            after="/images/slider/after-2400.jpg"
+            beforeSrcSet="/images/slider/before-1200.jpg 1200w, /images/slider/before-2400.jpg 2400w"
+            afterSrcSet="/images/slider/after-1200.jpg 1200w, /images/slider/after-2400.jpg 2400w"
             caption="Our own lawn, summer 2026. Drag the slider to compare before and after."
           />
           <div className="ornament" aria-hidden="true"><span>{BRAND.irish}</span></div>
